@@ -22,19 +22,6 @@ planRouter.post('/plan', healthCheck,verifyToken, async (req, res) => {
             }
             //   console.log("Reply : ", reply)
         })
-    
-        for (let key in req.body) {
-            if (typeof req.body[key] === 'object') {
-                const nestedKeys = Object.keys(req.body[key]);
-                for (let nestedKey of nestedKeys) {
-                    client.set(`${req.body['objectId']}:${key}:${nestedKey}`, JSON.stringify(req.body[key][nestedKey]), (err, reply) => {
-                        if (err) {
-                            return res.status(500).send();
-                        }
-                    });
-                }
-            }
-        }
 
     const response = await client.get(req.body['objectId']);
     res.set('Etag', etagCreater(JSON.stringify(response)));
@@ -148,9 +135,10 @@ planRouter.patch('/plan/:id', healthCheck,verifyToken, async (req, res) => {
             }
             //   console.log("Reply : ", reply)
         })
-    const etagRes = etagCreater(JSON.stringify(oldResponse))
+    const newresponse = await client.get(req.params.id);
+    const etagRes = etagCreater(JSON.stringify(newresponse))
     res.set('Etag', etagRes);
-    return res.status(201).send(oldResponse);
+    return res.status(201).send(newresponse);
 })
 
 
