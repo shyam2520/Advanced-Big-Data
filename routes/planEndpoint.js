@@ -11,6 +11,10 @@ planRouter.post('/plan', healthCheck,verifyToken, async (req, res) => {
     if (req._body == false || req.get('Content-length') == 0 || !req.body['objectId'] || ajv.validate(dataSchema, req.body) == false){
         return res.status(400).send('Bad Request');
     }
+    const checkIfExist = await client.get(req.body['objectId']);
+    if (checkIfExist != null) {
+        return res.status(409).send('Conflict already exists');
+    }
     client.set(req.body['objectId'], JSON.stringify(req.body),
         (err, reply) => {
             if (err) {
@@ -18,6 +22,20 @@ planRouter.post('/plan', healthCheck,verifyToken, async (req, res) => {
             }
             //   console.log("Reply : ", reply)
         })
+    
+        for (let key in req.body) {
+            if (typeof req.body[key] === 'object') {
+                const nestedKeys = Object.keys(req.body[key]);
+                for (let nestedKey of nestedKeys) {
+                    client.set(`${req.body['objectId']}:${key}:${nestedKey}`, JSON.stringify(req.body[key][nestedKey]), (err, reply) => {
+                        if (err) {
+                            return res.status(500).send();
+                        }
+                    });
+                }
+            }
+        }
+
     const response = await client.get(req.body['objectId']);
     res.set('Etag', etagCreater(JSON.stringify(response)));
     return res.status(201).send(req.body);

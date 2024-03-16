@@ -15,7 +15,7 @@ const verifyToken = async (req,res,next)=>{
         return res.status(400).send('authorization missing');
     }
     else if(req.headers['authorization'].split(' ')[0] !== 'Bearer'){
-        return res.status(400).send('Only Oauth2.0 is supported');
+        return res.status(400).send('Invalid Bearer Token');
     }
     try{
         const ticket = await oauthClient.verifyIdToken({
