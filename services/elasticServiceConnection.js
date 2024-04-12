@@ -18,19 +18,6 @@ const elasticServiceConnection = async () => {
     try {
         const res = await client.info();
         console.log('Elasticsearch is running');
-        client.ping((error) => {
-            if (error) {
-                console.trace('elasticsearch cluster is down!');
-            }
-            console.log('Elastic search client is working fine!');
-        });
-        // if(await client.indices.exists({index: 'planindex'})){
-        //   await client.indices.delete({index: 'planindex'});
-        // }
-        // await client.indices.create({
-        //   index: 'planindex',
-        //   // body: planMapping
-        // })
         return new Promise((resolve, reject) => {
             resolve({ message: 'Elasticsearch is running', client: client, status: 200 });
         });

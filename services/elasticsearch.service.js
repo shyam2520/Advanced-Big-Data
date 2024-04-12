@@ -3,8 +3,6 @@ const {client,elasticServiceConnection} = require('../services/elasticServiceCon
 
 const INDEX_NAME = "planindex";
 
-// Reference: https://www.compose.com/articles/getting-started-with-elasticsearch-and-node/
-
 client.ping((error) => {
     if (error) {
         console.trace('elasticsearch cluster is down!');
@@ -109,7 +107,6 @@ const postDocument = async (plan) => {
         await convertMapToDocumentIndex(plan, "", "plan", plan.objectId);
         for (const [key, value] of Object.entries(MapOfDocuments)) {
             const [parentId, objectId] = key.split(":");
-            console.log("ParentId", parentId, "ObjectId", objectId, "Value", value)
             // await client.index
             await client.index({
                 index: INDEX_NAME,
@@ -118,8 +115,14 @@ const postDocument = async (plan) => {
                 body: value,
             });
         }
+        return new Promise((resolve, reject) => {
+            resolve({ message: 'Document has been posted', status: 200 });
+        });
     } catch (e) {
         console.log("Error", e);
+        return new Promise((resolve, reject) => {
+            resolve({ message: 'Document has not been posted', status: 500 });
+        });
     }
 }
 

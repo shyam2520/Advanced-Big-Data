@@ -5,18 +5,24 @@ const sender = (messageData) => {
         if (error0) {
             throw error0;
         }
-        connection.createChannel( (error1, channel) => {
-            if (error1) {
-                throw error1;
+        connection.createChannel( async (error1, channel) => {
+            try{
+                if (error1) {
+                    throw error1;
+                }
+                var msg = JSON.stringify(messageData);
+                channel.assertQueue( QUEUE, {
+                    durable: false
+                });
+                channel.sendToQueue(QUEUE, Buffer.from(msg));
             }
-     
-            var msg = JSON.stringify(messageData);
-            channel.assertQueue( QUEUE, {
-                durable: false
-            });
-            channel.sendToQueue(QUEUE, Buffer.from(msg));
-            console.log("Sent a message to the queue ");
+            catch(err){
+                console.error(err);
+            }
+        
+
         });
+
     })
 }
 

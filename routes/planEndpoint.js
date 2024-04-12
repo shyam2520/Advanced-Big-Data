@@ -9,27 +9,14 @@ const dataSchema = require('../dataSchema');
 const { type, send } = require('express/lib/response');
 const sender = require('../ pubsub/sender');
 const {elasticClient,elasticServiceConnection} = require('../services/elasticServiceConnection');
-
+const rabbit = require("../services/rabbitmq.service");
 
 
 const flattenKeys = async (data) =>{
     const parentKey=`${data.objectType}:${data.objectId}`;
     let newObj = {}; 
-    // console.log("Current Parent Key = ",parentKey+"\n")
-    // await client.set(parentKey, JSON.stringify(data),
-    //     (err, reply) => {
-    //         if (err) {
-    //             return res.status(500).send();
-    //         }
-    //     })
     for(let [key,value] of Object.entries(data)){
         if(typeof value == 'object' && !Array.isArray(value)){
-            // console.log(key);
-            // await client.set(`${parentKey}:${key}`, JSON.stringify(value),(err, reply) => {
-            //     if (err) {
-            //         return res.status(500).send();
-            //     }
-            // })
             const newKey = `${parentKey}:${key}`;
             const res = await flattenKeys(value);
             await client.set(newKey, JSON.stringify(res),(err, reply) => {
@@ -42,11 +29,6 @@ const flattenKeys = async (data) =>{
         else if(Array.isArray(value)){
             // console.log(key + ' is an array')
             let arr = [];
-            // await client.set(`${parentKey}:${key}`, JSON.stringify(value),(err, reply) => {
-            //     if (err) {
-            //         return res.status(500).send();
-            //     }
-            // })
             for(let i=0;i<value.length;i++){
                 arr.push(await flattenKeys(value[i]));
             }
@@ -74,8 +56,6 @@ const flattenKeys = async (data) =>{
 
 const unflattenKeys = async (parentKey) =>{
     let response = await client.get(parentKey);
-    // console.log("Parent Key = ",parentKey+"\n")
-    // console.log("Response = ",response+"\n")
 
     let data = JSON.parse(response);
     // console.log("Data = ",data+"\n")
@@ -126,8 +106,10 @@ planRouter.post('/plan', healthCheck,verifyToken, async (req, res) => {
     }
 
     await flattenKeys(req.body);
-    sender({operation:"POST",body:req.body}); 
     res.set('Etag', etagCreater(JSON.stringify(req.body)));
+    // sender({operation:"POST",body:req.body}); 
+    const message = {operation:"STORE",body:req.body};
+    rabbit.producer(message);
     return res.status(201).send(req.body);
 })
 
@@ -239,36 +221,8 @@ planRouter.patch('/plan/:id', healthCheck, verifyToken, async (req, res) => {
     // const newresponse = await client.get(req.params.id);
     const etagRes = etagCreater(JSON.stringify(req.body))
     res.set('Etag', etagRes);
+    rabbit.producer({operation:"STORE",body:oldResponse});
     return res.status(201).send(oldResponse);
-
-    // const oldResponse = JSON.parse(response);
-    // // const newResponse = {...oldResponse, ...req.body};
-
-    // for (let [key, value] of Object.entries(req.body)) {
-    //     if (dataSchema.properties[key].type == 'array') {
-    //         const oldArray = oldResponse[key];
-    //         const newArray = value;
-    //         for (let i = 0; i < newArray.length; i++) {
-    //             const oldData = oldArray.filter((item) => item.objectId == newArray[i].objectId);
-    //             if (oldData.length == 0) {
-    //                 oldArray.push(newArray[i]);
-    //             }
-    //             else {
-    //                 oldArray[oldArray.indexOf(oldData[0])] = newArray[i];
-    //             }
-    //         }
-    //     }
-    //     else {
-    //         oldResponse[key] = value;
-    //     }
-    // }
-    // client.set(req.params.id, JSON.stringify(oldResponse),
-    //     (err, reply) => {
-    //         if (err) {
-    //             return res.status(500).send();
-    //         }
-    //         //   console.log("Reply : ", reply)
-    //     })
 })
 
 const deleteAllKeys = async (parentKey) =>{
@@ -317,11 +271,11 @@ planRouter.delete('/plan/:id', healthCheck, verifyToken, async (req, res) => {
         if (response == null) {
             return res.status(404).send('Not Found');
         }
+        const clientData = await unflattenKeys(parentKey)
+        // console.log(clientData)
         await deleteAllKeys(parentKey);
-        // const response = await client.del(req.params.id);
-        // if (response == 0) {
-        //     return res.status(404).send('Not Found');
-        // }
+        const message = {operation:"DELETE",body:clientData};
+        rabbit.producer(message);
         return res.status(204).send();
     }
     catch (err) {
