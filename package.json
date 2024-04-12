@@ -6,7 +6,9 @@
     "start": "node app.js"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "7.13",
     "ajv": "^8.12.0",
+    "amqplib": "^0.10.3",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "ejs": "~2.6.1",

@@ -6,6 +6,8 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var reciever = require('./ pubsub/reciever');
+var {client, elasticServiceConnection} = require('./services/elasticServiceConnection');
 
 var app = express();
 
@@ -22,7 +24,15 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
-app.listen(3000, function() {
-  console.log('Server is running on port 3000');
+app.listen(3000,async  function() {
+  try{
+    reciever();
+    await elasticServiceConnection();
+    console.log('Server is running on port 3000');
+  }
+  catch(err){
+    console.error(err);
+  }
+
 });
 module.exports = app;
