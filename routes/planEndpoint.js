@@ -56,7 +56,7 @@ const flattenKeys = async (data) =>{
 
 const unflattenKeys = async (parentKey) =>{
     let response = await client.get(parentKey);
-
+    if(response == null) return null;
     let data = JSON.parse(response);
     // console.log("Data = ",data+"\n")
     let newObj = {};
@@ -100,7 +100,8 @@ planRouter.post('/plan', healthCheck,verifyToken, async (req, res) => {
     if (req._body == false || req.get('Content-length') == 0 || !req.body['objectId'] || ajv.validate(dataSchema, req.body) == false){
         return res.status(400).send('Bad Request');
     }
-    const checkIfExist = await client.get(req.body['objectId']);
+    const parentKey = `plan:${req.body.objectId}`;
+    const checkIfExist = await client.get(parentKey);
     if (checkIfExist != null) {
         return res.status(409).send('Conflict already exists');
     }
@@ -219,7 +220,7 @@ planRouter.patch('/plan/:id', healthCheck, verifyToken, async (req, res) => {
     }
     await flattenKeys(oldResponse);
     // const newresponse = await client.get(req.params.id);
-    const etagRes = etagCreater(JSON.stringify(req.body))
+    const etagRes = etagCreater(JSON.stringify(oldResponse))
     res.set('Etag', etagRes);
     rabbit.producer({operation:"STORE",body:oldResponse});
     return res.status(201).send(oldResponse);
